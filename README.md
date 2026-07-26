@@ -45,6 +45,7 @@
 <p align="center">
   <img width="233" height="209" alt="Анимация4" src="https://github.com/user-attachments/assets/3896894e-10bc-44a0-9bea-95ff54031da5" />
 </p>
+
 ---
 
 ## ⚙️ Фильтрация ввода
@@ -77,6 +78,7 @@
 <p align="center">
   <img width="604" height="398" alt="Анимация2" src="https://github.com/user-attachments/assets/0eb6f3c4-4002-4226-ba04-f51452f11b1c" />
 </p>
+
 ---
 
 ## 📥 Требования и запуск
