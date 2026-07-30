@@ -9,6 +9,36 @@ from pynput import keyboard, mouse
 # НАСТРОЙКА: Сброс статистики CPM/WPM в ноль при простое (в миллисекундах)
 SPEED_RESET_TIMEOUT_MS = 10000
 
+# Словарь переводов для локализации интерфейса
+TRANSLATIONS = {
+    "ru": {
+        "masher_mode": "Учитывая все нажатия клавиш и сочетаний",
+        "lock": "Заблокировать",
+        "unlock": "Разблокировать",
+        "pause": "Приостановить подсчет",
+        "resume": "Продолжить подсчет",
+        "reset": "Сбросить счетчик",
+        "exit": "Выход",
+        "language": "Язык \\ Language",
+        "start": "Старт",
+        "elapsed": "Прошло",
+        "speed": "Скорость",
+    },
+    "en": {
+        "masher_mode": "Count all keys and combinations",
+        "lock": "Lock",
+        "unlock": "Unlock",
+        "pause": "Pause Counting",
+        "resume": "Resume Counting",
+        "reset": "Reset Counter",
+        "exit": "Exit",
+        "language": "Language \\ Язык",
+        "start": "Start",
+        "elapsed": "Elapsed",
+        "speed": "Speed",
+    }
+}
+
 
 # Класс для "искрящихся" частиц (эффект взрыва)
 class Particle:
@@ -64,6 +94,9 @@ class InputMonitor(QObject):
         self.alt_pressed = False
         self.win_pressed = False
         
+        # Набор для отслеживания зажатых клавиш (защита от autorepeat)
+        self.pressed_keys = set()
+        
         self.key_listener = keyboard.Listener(
             on_press=self.on_press, 
             on_release=self.on_release
@@ -81,6 +114,11 @@ class InputMonitor(QObject):
             self.mouse_clicked.emit()
         
     def on_press(self, key):
+        # Если клавиша уже зажата, игнорируем событие удержания
+        if key in self.pressed_keys:
+            return
+        self.pressed_keys.add(key)
+
         if self.button_masher_mode:
             self.char_typed.emit()
             return
@@ -112,6 +150,9 @@ class InputMonitor(QObject):
                     self.char_typed.emit()
                     
     def on_release(self, key):
+        # Удаляем клавишу из списка зажатых при отпускании
+        self.pressed_keys.discard(key)
+
         if key in (keyboard.Key.ctrl, keyboard.Key.ctrl_l, keyboard.Key.ctrl_r):
             self.ctrl_pressed = False
         elif key in (keyboard.Key.alt, keyboard.Key.alt_l, keyboard.Key.alt_r):
@@ -133,6 +174,9 @@ class CubeWidget(QWidget):
         self.counting_enabled = True
         self.locked = False
         self.button_masher_mode = False
+        
+        # Настройка языка по умолчанию ("ru" или "en")
+        self.lang = "ru"
         
         # Режимы отображения: "counter" (счетчик), "time" (время), "speed" (скорость)
         self.display_mode = "counter"
@@ -170,8 +214,16 @@ class CubeWidget(QWidget):
         
         self.monitor = InputMonitor()
         self.monitor.char_typed.connect(self.increment_count)
-        self.monitor.mouse_clicked.connect(self.trigger_ripple)
+        self.monitor.mouse_clicked.connect(self.handle_mouse_click)
         self.monitor.start()
+
+    def tr_text(self, key):
+        # Метод получения переведенной строки
+        return TRANSLATIONS.get(self.lang, TRANSLATIONS["ru"]).get(key, key)
+
+    def set_language(self, lang):
+        self.lang = lang
+        self.update()
 
     def increment_count(self):
         if not self.counting_enabled:
@@ -217,6 +269,12 @@ class CubeWidget(QWidget):
         cy = self.height() // 2
         self.ripples.append(Ripple(cx, cy))
         self.update()
+
+    def handle_mouse_click(self):
+        if not self.counting_enabled:
+            return
+        self.trigger_ripple()
+        self.increment_count()
 
     def animate_step(self):
         now = QDateTime.currentDateTime()
@@ -354,7 +412,7 @@ class CubeWidget(QWidget):
             elapsed_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
             launch_str = self.launch_time.toString("hh:mm:ss")
             
-            time_text = f"Старт:\n{launch_str}\nПрошло:\n{elapsed_str}"
+            time_text = f"{self.tr_text('start')}:\n{launch_str}\n{self.tr_text('elapsed')}:\n{elapsed_str}"
             painter.drawText(bg_rect, Qt.AlignCenter, time_text)
             
         else:
@@ -364,7 +422,7 @@ class CubeWidget(QWidget):
             cpm = len(self.keystroke_times)
             wpm = int(cpm / 5)  
             
-            speed_text = f"Скорость:\n{cpm} CPM\n{wpm} WPM"
+            speed_text = f"{self.tr_text('speed')}:\n{cpm} CPM\n{wpm} WPM"
             painter.drawText(bg_rect, Qt.AlignCenter, speed_text)
 
     def mousePressEvent(self, event):
@@ -402,7 +460,7 @@ class CubeWidget(QWidget):
     def contextMenuEvent(self, event):
         contextMenu = QMenu(self)
         
-        masher_action = QAction("Учитывая все нажатия клавиш и сочетаний", self)
+        masher_action = QAction(self.tr_text("masher_mode"), self)
         masher_action.setCheckable(True)
         masher_action.setChecked(self.button_masher_mode)
         masher_action.triggered.connect(self.toggle_masher_mode)
@@ -410,19 +468,39 @@ class CubeWidget(QWidget):
         
         contextMenu.addSeparator()
         
-        lock_action = QAction("Заблокировать" if not self.locked else "Разблокировать", self)
+        lock_text = self.tr_text("unlock") if self.locked else self.tr_text("lock")
+        lock_action = QAction(lock_text, self)
         lock_action.triggered.connect(self.toggle_lock)
         contextMenu.addAction(lock_action)
         
-        pause_action = QAction("Приостановить подсчет" if self.counting_enabled else "Продолжить подсчет", self)
+        pause_text = self.tr_text("resume") if not self.counting_enabled else self.tr_text("pause")
+        pause_action = QAction(pause_text, self)
         pause_action.triggered.connect(self.toggle_counting)
         contextMenu.addAction(pause_action)
         
-        reset_action = QAction("Сбросить счетчик", self)
+        reset_action = QAction(self.tr_text("reset"), self)
         reset_action.triggered.connect(self.reset_counter)
         contextMenu.addAction(reset_action)
         
-        exit_action = QAction("Выход", self)
+        # Подменю для выбора языка
+        lang_menu = contextMenu.addMenu(self.tr_text("language"))
+        
+        ru_lang_action = QAction("Русский", self)
+        ru_lang_action.setCheckable(True)
+        ru_lang_action.setChecked(self.lang == "ru")
+        ru_lang_action.triggered.connect(lambda: self.set_language("ru"))
+        
+        en_lang_action = QAction("English", self)
+        en_lang_action.setCheckable(True)
+        en_lang_action.setChecked(self.lang == "en")
+        en_lang_action.triggered.connect(lambda: self.set_language("en"))
+        
+        lang_menu.addAction(ru_lang_action)
+        lang_menu.addAction(en_lang_action)
+        
+        contextMenu.addSeparator()
+        
+        exit_action = QAction(self.tr_text("exit"), self)
         exit_action.triggered.connect(QApplication.quit)
         contextMenu.addAction(exit_action)
         
