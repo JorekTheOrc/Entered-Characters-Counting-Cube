@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <a href="README.md">Русский</a> | <strong>Read in English</strong>
+  <a href="README.ru.md">Читать на русском</a>
 </p>
 
 <p align="center">
