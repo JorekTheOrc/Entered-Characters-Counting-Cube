@@ -1,14 +1,14 @@
 <h1 align="center"> ⌨️ Entered Characters Counting Cube (PyQt5)</h1>
 <p align="center">
-  <img width="119" height="120" alt="Анимация" src="https://github.com/user-attachments/assets/000dbb83-1cc5-42d0-aeb1-e48a83aa418b" />
+  <img width="119" height="120" alt="Animation" src="https://github.com/user-attachments/assets/000dbb83-1cc5-42d0-aeb1-e48a83aa418b" />
 </p>
 
 <p align="center">
-  Компактный интерактивный виджет для рабочего стола, который отслеживает количество нажатых клавиш, рассчитывает скорость печати (CPM/WPM) и время работы, сопровождая ввод процедурными визуальными эффектами.
+  A compact interactive desktop widget that tracks keystrokes, calculates typing speed (CPM/WPM), and displays session uptime, all accompanied by procedural visual effects.
 </p>
 
 <p align="center">
-  <strong>Русский</strong> | <a href="README_EN.md">Read in English</a>
+  <a href="README.md">Русский</a> | <strong>Read in English</strong>
 </p>
 
 <p align="center">
@@ -20,71 +20,78 @@
 
 ---
 
-## ✨ Основные возможности
+## ✨ Key Features
 
-* **📊 Три режима отображения:** Быстрое переключение информации на кубе в один клик.
-* **🔥 Динамическая система накала (Heat):** Чем быстрее вы печатаете, тем быстрее меняется цвет неоновой рамки виджета и тем больше визуальных эффектов (искр) генерируется внутри него.
-* **🎨 Процедурные визуальные эффекты:**
-  * **Эффект тряски (Shake):** Легкое дрожание текста при вводе символов.
-  * **Эффект искр (Particles):** Вылетающие частицы из центра при нажатии клавиш, которые плавно угасают и удерживаются границами виджета.
-  * **Эффект ряби (Ripples):** Круговые волны внутри куба при кликах мыши (в режиме кликера).
-* **🔒 Удобное управление:** Возможность заблокировать перемещение виджета, приостановить подсчет или изменить режим фильтрации клавиш через контекстное меню.
-* **🔲 Минималистичный дизайн:** Безрамочное окно с поддержкой прозрачности и эффектом «дыхания» рамки.
+* **📊 Three Display Modes:** Switch between metrics with a single left-click on the cube.
+* **🌐 Bilingual Interface:** Support for Russian and English languages with dynamic switching of text labels and menu options.
+* **🔥 Dynamic Heat System:** The faster you type, the quicker the neon border changes its color, and more particles (sparks) are generated inside.
+* **🎨 Procedural Visual Effects:**
+  * **Shake Effect:** A subtle text jitter triggered when typing.
+  * **Spark Particles:** Particles burst from the center on keystrokes, fading out naturally while being contained inside the widget borders.
+  * **Ripple Effect:** Circular waves radiating inside the cube upon mouse clicks (when button masher mode is active).
+* **🔒 Layout Controls:** Lock the widget position, pause counting, or toggle key filters directly from the context menu.
+* **🔲 Minimalist Design:** Frameless translucent window with a subtle border breathing animation.
 
 ---
 
-## ⚡ Режимы работы и отображения
+## ⚡ Operating & Display Modes
 
-Вы можете переключать информацию на экране кликом левой кнопки мыши по кубу:
+You can cycle through the display modes by left-clicking the cube:
 
-| Режим | Что отображает | Особенности |
+| Mode | Information Displayed | Features |
 | :--- | :--- | :--- |
-| **Счетчик (Counter)** | Общее число нажатых символов | Сопровождается эффектом тряски цифр и вылетом искр при вводе. |
-| **Время (Time)** | Время запуска и общую длительность сессии | Формат отображения: `ЧЧ:ММ:СС`. |
-| **Скорость (Speed)** | Скорость ввода в CPM и WPM | Рассчитывается в реальном времени на основе скользящего окна за 60 секунд. |
+| **Counter** | Total number of keystrokes | Accompanied by digit shaking and spark bursts on input. |
+| **Time** | Start time and elapsed session duration | Time format automatically adapts to the chosen language. |
+| **Speed** | Typing speed in CPM and WPM | Calculated in real-time using a 60-second sliding window. |
+
 <p align="center">
-  <img width="233" height="209" alt="Анимация4" src="https://github.com/user-attachments/assets/3896894e-10bc-44a0-9bea-95ff54031da5" />
+  <img width="233" height="209" alt="Animation4" src="https://github.com/user-attachments/assets/3896894e-10bc-44a0-9bea-95ff54031da5" />
 </p>
 
 ---
 
-## ⚙️ Фильтрация ввода
+## ⚙️ Input Filtering
 
-По умолчанию программа работает в **режиме умного подсчета символов**:
-* Игнорируются системные клавиши-модификаторы (`Ctrl`, `Alt`, `Win`).
-* Игнорируются клавиши навигации и управления (`Enter`, `Backspace`, `Tab`, стрелки, `Page Up/Down` и др.).
-* Пробел учитывается только в том случае, если он нажат без модификаторов.
+The program records **only individual physical key presses** (holding down keys and OS autorepeat are completely ignored in all modes).
 
-В **"Режиме кликера" (Button Masher Mode)**, который можно включить через контекстное меню:
-* Учитываются любые нажатия клавиш и их сочетаний.
-* Начинают учитываться и подсчитываться клики мыши (сопровождаются эффектом круговой ряби).
+By default, the widget operates in **Smart Counting Mode**:
+* System modifier keys (`Ctrl`, `Alt`, `Win`) are ignored.
+* Navigation and command keys (`Enter`, `Backspace`, `Tab`, arrows, `Page Up/Down`, etc.) are ignored.
+* The Spacebar is counted only when pressed without modifiers.
+
+In **Button Masher Mode** (can be enabled via the context menu):
+* All individual key presses and hotkey combinations are counted.
+* Mouse clicks are also counted and produce a circular ripple effect.
 
 ---
 
-## ⌨️ Управление виджетом
+## ⌨️ Widget Controls
 
-| Действие | Результат |
+| Action | Result |
 | :--- | :--- |
-| **Клик ЛКМ** | Переключение режима отображения (Счетчик ➡️ Время ➡️ Скорость) |
-| **Зажатие ЛКМ + перетаскивание** | Перемещение куба по экрану (если он не заблокирован) |
-| **Клик ПКМ** | Открытие контекстного меню настроек |
+| **Left Click (LMB)** | Switch display mode (Counter ➡️ Time ➡️ Speed) |
+| **Hold LMB & Drag** | Drag the cube across the screen (if unlocked) |
+| **Right Click (RMB)** | Open settings context menu |
 
-### Меню настроек (ПКМ):
-* **Учитывать все нажатия клавиш...** — активация режима кликера (Button Masher).
-* **Заблокировать / Разблокировать** — запрет на случайное перемещение виджета по экрану.
-* **Приостановить / Продолжить подсчет** — временная остановка трекинга активности.
-* **Сбросить счетчик** — обнуление статистики нажатий и уровня накала.
-* **Выход** — закрытие приложения.
+### Settings Menu (RMB):
+* **Count all keys and combinations** — activates Button Masher mode.
+* **Lock / Unlock** — prevents accidental dragging of the widget.
+* **Pause / Resume Counting** — temporarily pauses activity tracking.
+* **Reset Counter** — resets keystroke statistics and heat level.
+* **Language \ Язык** — toggles the interface language (Русский / English).
+* **Exit** — closes the application.
+
 <p align="center">
-  <img width="604" height="398" alt="Анимация2" src="https://github.com/user-attachments/assets/0eb6f3c4-4002-4226-ba04-f51452f11b1c" />
+  <img width="604" height="398" alt="Animation2" src="https://github.com/user-attachments/assets/0eb6f3c4-4002-4226-ba04-f51452f11b1c" />
 </p>
 
 ---
 
-## 📥 Требования и запуск
+## 📥 Requirements & Installation
 
-### Требования
-Для работы скрипта необходим Python версии 3.8 или выше, а также установленные зависимости:
+### Requirements
+This script requires Python 3.8 or higher. Dependencies can be installed using:
 
 ```bash
 pip install PyQt5 pynput
+```
