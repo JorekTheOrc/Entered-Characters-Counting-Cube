@@ -24,12 +24,14 @@
 
 * **📊 Three Display Modes:** Switch between metrics with a single left-click on the cube.
 * **🌐 Bilingual Interface:** Support for Russian and English languages with dynamic switching of text labels and menu options.
+* **💾 State Persistence:** Automatically saves your preferences, position, counter value, language, and lock status between app restarts.
+* **📥 System Tray Support:** Minimize the widget to the system tray so it continues counting in the background without cluttering your screen.
 * **🔥 Dynamic Heat System:** The faster you type, the quicker the neon border changes its color, and more particles (sparks) are generated inside.
 * **🎨 Procedural Visual Effects:**
   * **Shake Effect:** A subtle text jitter triggered when typing.
   * **Spark Particles:** Particles burst from the center on keystrokes, fading out naturally while being contained inside the widget borders.
-  * **Ripple Effect:** Circular waves radiating inside the cube upon mouse clicks (when button masher mode is active).
-* **🔒 Layout Controls:** Lock the widget position, pause counting, or toggle key filters directly from the context menu.
+  * **Ripple Effect:** Circular waves radiating inside the cube upon mouse clicks (when enabled).
+* **🔒 Layout Controls:** Lock the widget position, pause counting, or toggle mouse click tracking directly from the context menu.
 * **🔲 Minimalist Design:** Frameless translucent window with a subtle border breathing animation.
 
 ---
@@ -59,9 +61,8 @@ By default, the widget operates in **Smart Counting Mode**:
 * Navigation and command keys (`Enter`, `Backspace`, `Tab`, arrows, `Page Up/Down`, etc.) are ignored.
 * The Spacebar is counted only when pressed without modifiers.
 
-In **Button Masher Mode** (can be enabled via the context menu):
-* All individual key presses and hotkey combinations are counted.
-* Mouse clicks are also counted and produce a circular ripple effect.
+Optional **Mouse Click Tracking** (can be enabled via the context menu):
+* Counts mouse clicks in addition to keystrokes and triggers a circular ripple effect inside the cube.
 
 ---
 
@@ -72,14 +73,16 @@ In **Button Masher Mode** (can be enabled via the context menu):
 | **Left Click (LMB)** | Switch display mode (Counter ➡️ Time ➡️ Speed) |
 | **Hold LMB & Drag** | Drag the cube across the screen (if unlocked) |
 | **Right Click (RMB)** | Open settings context menu |
+| **Tray Icon Click** | Toggle widget visibility (Hide to tray / Show) |
 
 ### Settings Menu (RMB):
-* **Count all keys and combinations** — activates Button Masher mode.
+* **Count mouse clicks** — toggles tracking for mouse button clicks.
 * **Lock / Unlock** — prevents accidental dragging of the widget.
 * **Pause / Resume Counting** — temporarily pauses activity tracking.
 * **Reset Counter** — resets keystroke statistics and heat level.
+* **Hide to tray** — minimizes the widget to the system tray.
 * **Language \ Язык** — toggles the interface language (Русский / English).
-* **Exit** — closes the application.
+* **Exit** — closes the application and saves current state.
 
 <p align="center">
   <img width="604" height="398" alt="Animation2" src="https://github.com/user-attachments/assets/0eb6f3c4-4002-4226-ba04-f51452f11b1c" />
@@ -94,4 +97,3 @@ This script requires Python 3.8 or higher. Dependencies can be installed using:
 
 ```bash
 pip install PyQt5 pynput
-```
