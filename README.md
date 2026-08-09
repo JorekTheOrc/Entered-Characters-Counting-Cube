@@ -24,8 +24,9 @@
 
 * **📊 Three Display Modes:** Switch between metrics with a single left-click on the cube.
 * **🌐 Bilingual Interface:** Support for Russian and English languages with dynamic switching of text labels and menu options.
-* **💾 State Persistence:** Automatically saves your preferences, position, counter value, language, and lock status between app restarts.
-* **📥 System Tray Support:** Minimize the widget to the system tray so it continues counting in the background without cluttering your screen.
+* **💾 Preferences Persistence:** Automatically saves your widget position, language, lock status, and mouse options between restarts (counter resets to 0 on launch).
+* **📥 System Tray Integration:** Easily minimize the cube to the system tray via middle-click or context menu to keep it running smoothly in the background.
+* **📝 Bilingual Session Logging:** Generates a clean bilingual (`stats_log.txt`) history file tracking launch timestamps, session duration, and click counts. Easily accessible directly from the context menu.
 * **🔥 Dynamic Heat System:** The faster you type, the quicker the neon border changes its color, and more particles (sparks) are generated inside.
 * **🎨 Procedural Visual Effects:**
   * **Shake Effect:** A subtle text jitter triggered when typing.
@@ -72,8 +73,9 @@ Optional **Mouse Click Tracking** (can be enabled via the context menu):
 | :--- | :--- |
 | **Left Click (LMB)** | Switch display mode (Counter ➡️ Time ➡️ Speed) |
 | **Hold LMB & Drag** | Drag the cube across the screen (if unlocked) |
+| **Middle Click (MMB / Wheel)** | Minimize / Hide the widget to system tray |
 | **Right Click (RMB)** | Open settings context menu |
-| **Tray Icon Click** | Toggle widget visibility (Hide to tray / Show) |
+| **Tray Icon Click** | Toggle widget visibility (Show / Hide) |
 
 ### Settings Menu (RMB):
 * **Count mouse clicks** — toggles tracking for mouse button clicks.
@@ -81,8 +83,9 @@ Optional **Mouse Click Tracking** (can be enabled via the context menu):
 * **Pause / Resume Counting** — temporarily pauses activity tracking.
 * **Reset Counter** — resets keystroke statistics and heat level.
 * **Hide to tray** — minimizes the widget to the system tray.
+* **Open Stats Log** — opens `stats_log.txt` in your default text editor.
 * **Language \ Язык** — toggles the interface language (Русский / English).
-* **Exit** — closes the application and saves current state.
+* **Exit** — closes the application and logs the session metrics.
 
 <p align="center">
   <img width="604" height="398" alt="Animation2" src="https://github.com/user-attachments/assets/0eb6f3c4-4002-4226-ba04-f51452f11b1c" />
