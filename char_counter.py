@@ -1,9 +1,9 @@
 import sys
 import random
 import math
-from PyQt5.QtCore import Qt, QPoint, QTimer, QRect, QRectF, pyqtSignal, QObject, QDateTime
-from PyQt5.QtWidgets import QApplication, QWidget, QMenu, QAction
-from PyQt5.QtGui import QFont, QColor, QPainter, QBrush, QPen, QPainterPath
+from PyQt5.QtCore import Qt, QPoint, QTimer, QRect, QRectF, pyqtSignal, QObject, QDateTime, QSettings
+from PyQt5.QtWidgets import QApplication, QWidget, QMenu, QAction, QSystemTrayIcon
+from PyQt5.QtGui import QFont, QColor, QPainter, QBrush, QPen, QPainterPath, QIcon, QPixmap
 from pynput import keyboard, mouse
 
 # НАСТРОЙКА: Сброс статистики CPM/WPM в ноль при простое (в миллисекундах)
@@ -12,12 +12,14 @@ SPEED_RESET_TIMEOUT_MS = 10000
 # Словарь переводов для локализации интерфейса
 TRANSLATIONS = {
     "ru": {
-        "masher_mode": "Учитывая все нажатия клавиш и сочетаний",
+        "masher_mode": "Учитывать клики мышью",
         "lock": "Заблокировать",
         "unlock": "Разблокировать",
         "pause": "Приостановить подсчет",
         "resume": "Продолжить подсчет",
         "reset": "Сбросить счетчик",
+        "hide_tray": "Скрыть в трей",
+        "show_app": "Показать куб",
         "exit": "Выход",
         "language": "Язык \\ Language",
         "start": "Старт",
@@ -25,12 +27,14 @@ TRANSLATIONS = {
         "speed": "Скорость",
     },
     "en": {
-        "masher_mode": "Count all keys and combinations",
+        "masher_mode": "Count mouse clicks",
         "lock": "Lock",
         "unlock": "Unlock",
         "pause": "Pause Counting",
         "resume": "Resume Counting",
         "reset": "Reset Counter",
+        "hide_tray": "Hide to tray",
+        "show_app": "Show Cube",
         "exit": "Exit",
         "language": "Language \\ Язык",
         "start": "Start",
@@ -47,7 +51,7 @@ class Particle:
         self.y = y
         self.vx = random.uniform(-4.0, 4.0)
         self.vy = random.uniform(-4.0, 4.0)
-        self.radius = random.uniform(1.2, 3.2)  # Стандартный размер частиц
+        self.radius = random.uniform(1.2, 3.2)
         self.color = random.choice([
             QColor(255, 69, 0),    # Красно-оранжевый
             QColor(255, 140, 0),   # Темно-оранжевый
@@ -94,7 +98,6 @@ class InputMonitor(QObject):
         self.alt_pressed = False
         self.win_pressed = False
         
-        # Набор для отслеживания зажатых клавиш (защита от autorepeat)
         self.pressed_keys = set()
         
         self.key_listener = keyboard.Listener(
@@ -114,14 +117,9 @@ class InputMonitor(QObject):
             self.mouse_clicked.emit()
         
     def on_press(self, key):
-        # Если клавиша уже зажата, игнорируем событие удержания
         if key in self.pressed_keys:
             return
         self.pressed_keys.add(key)
-
-        if self.button_masher_mode:
-            self.char_typed.emit()
-            return
 
         if key in (keyboard.Key.ctrl, keyboard.Key.ctrl_l, keyboard.Key.ctrl_r):
             self.ctrl_pressed = True
@@ -150,7 +148,6 @@ class InputMonitor(QObject):
                     self.char_typed.emit()
                     
     def on_release(self, key):
-        # Удаляем клавишу из списка зажатых при отпускании
         self.pressed_keys.discard(key)
 
         if key in (keyboard.Key.ctrl, keyboard.Key.ctrl_l, keyboard.Key.ctrl_r):
@@ -165,6 +162,8 @@ class InputMonitor(QObject):
 class CubeWidget(QWidget):
     def __init__(self):
         super().__init__()
+        self.settings = QSettings("CharCounterApp", "CharCounter")
+        
         self.count = 0
         self.particles = []
         self.ripples = []
@@ -174,26 +173,16 @@ class CubeWidget(QWidget):
         self.counting_enabled = True
         self.locked = False
         self.button_masher_mode = False
-        
-        # Настройка языка по умолчанию ("ru" или "en")
         self.lang = "ru"
         
-        # Режимы отображения: "counter" (счетчик), "time" (время), "speed" (скорость)
         self.display_mode = "counter"
         self.launch_time = QDateTime.currentDateTime()
-        
-        # Переменные для расчета скорости ввода (CPM / WPM)
         self.keystroke_times = []  
         
-        # Скрытая шкала активности / накала (Heat)
-        self.heat = 0.0            # Диапазон от 0.0 до 10.0
+        self.heat = 0.0
         self.last_type_time = QDateTime.currentDateTime()
         
-        # Переменные эффекта "Дыхания" рамки
-        self.breathing_angle = 0.0
-        self.border_alpha = 200    # Базовая прозрачность неонового свечения
-        
-        # Переменные цвета
+        self.border_alpha = 200
         self.hue = 0.0             
         self.base_speed = 0.3      
         
@@ -201,8 +190,12 @@ class CubeWidget(QWidget):
         self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.resize(110, 110)
         
+        # Позиционирование по умолчанию
         screen = QApplication.primaryScreen().geometry()
         self.move(screen.width() - 130, screen.height() - 170)
+        
+        # Загрузка сохраненного состояния
+        self.load_settings()
         
         self.drag_position = QPoint()
         self.click_start_pos = QPoint()
@@ -210,46 +203,115 @@ class CubeWidget(QWidget):
         
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.animate_step)
-        self.timer.start(16)      # Стартуем на 60 FPS
+        self.timer.start(16)
         
         self.monitor = InputMonitor()
+        self.monitor.button_masher_mode = self.button_masher_mode
         self.monitor.char_typed.connect(self.increment_count)
         self.monitor.mouse_clicked.connect(self.handle_mouse_click)
         self.monitor.start()
 
+        # Инициализация системного трея
+        self.init_tray()
+
+    def init_tray(self):
+        self.tray_icon = QSystemTrayIcon(self)
+        self.tray_icon.setIcon(self.create_tray_icon())
+        
+        tray_menu = QMenu()
+        self.toggle_action = QAction(self.tr_text("show_app"), self)
+        self.toggle_action.triggered.connect(self.toggle_visibility)
+        tray_menu.addAction(self.toggle_action)
+        
+        exit_action = QAction(self.tr_text("exit"), self)
+        exit_action.triggered.connect(self.quit_app)
+        tray_menu.addAction(exit_action)
+        
+        self.tray_icon.setContextMenu(tray_menu)
+        self.tray_icon.activated.connect(self.on_tray_icon_activated)
+        self.tray_icon.show()
+
+    def create_tray_icon(self):
+        # Динамическое создание векторного значка куба для системного трея
+        pixmap = QPixmap(32, 32)
+        pixmap.fill(Qt.transparent)
+        painter = QPainter(pixmap)
+        painter.setRenderHint(QPainter.Antialiasing)
+        
+        painter.setBrush(QBrush(QColor(20, 20, 20)))
+        painter.setPen(QPen(QColor(0, 200, 255), 2))
+        painter.drawRoundedRect(3, 3, 26, 26, 6, 6)
+        
+        painter.setFont(QFont("Consolas", 12, QFont.Bold))
+        painter.setPen(QPen(QColor(255, 255, 255)))
+        painter.drawText(QRect(0, 0, 32, 32), Qt.AlignCenter, "#")
+        painter.end()
+        
+        return QIcon(pixmap)
+
+    def toggle_visibility(self):
+        if self.isVisible():
+            self.hide()
+            self.toggle_action.setText(self.tr_text("show_app"))
+        else:
+            self.show()
+            self.raise_()
+            self.activateWindow()
+            self.toggle_action.setText(self.tr_text("hide_tray"))
+
+    def on_tray_icon_activated(self, reason):
+        if reason == QSystemTrayIcon.Trigger:
+            self.toggle_visibility()
+
+    def load_settings(self):
+        self.lang = self.settings.value("lang", "ru", type=str)
+        self.button_masher_mode = self.settings.value("masher_mode", False, type=bool)
+        self.locked = self.settings.value("locked", False, type=bool)
+        self.counting_enabled = self.settings.value("counting_enabled", True, type=bool)
+        self.count = self.settings.value("count", 0, type=int)
+        
+        pos = self.settings.value("pos")
+        if pos and isinstance(pos, QPoint):
+            self.move(pos)
+
+    def save_settings(self):
+        self.settings.setValue("lang", self.lang)
+        self.settings.setValue("masher_mode", self.button_masher_mode)
+        self.settings.setValue("locked", self.locked)
+        self.settings.setValue("counting_enabled", self.counting_enabled)
+        self.settings.setValue("count", self.count)
+        self.settings.setValue("pos", self.pos())
+
     def tr_text(self, key):
-        # Метод получения переведенной строки
         return TRANSLATIONS.get(self.lang, TRANSLATIONS["ru"]).get(key, key)
 
     def set_language(self, lang):
         self.lang = lang
+        self.save_settings()
+        if hasattr(self, 'toggle_action'):
+            self.toggle_action.setText(self.tr_text("show_app") if not self.isVisible() else self.tr_text("hide_tray"))
         self.update()
 
     def increment_count(self):
         if not self.counting_enabled:
             return
         
-        # Пробуждаем таймер до полных 60 кадров/сек при первом же клике
         if self.timer.interval() != 16:
             self.timer.setInterval(16)
         
         now = QDateTime.currentDateTime()
         self.count += 1
+        self.save_settings()
         
-        # Записываем таймстамп нажатия для расчета скорости
         self.keystroke_times.append(now)
-        
-        # Накапливаем показатель активности (максимум до 10.0)
         self.heat = min(self.heat + 0.6, 10.0)
         self.last_type_time = now
         
         if self.display_mode == "counter":
             self.shake_frames = 10
-            
             cx = self.width() // 2
             cy = self.height() // 2
             
-            # Количество вылетающих за раз искр по-прежнему увеличивается с ростом накала (от 10 до 40)
             num_sparks = 10 + int(self.heat * 3.0)
             for _ in range(num_sparks):
                 p = Particle(cx, cy)
@@ -261,7 +323,6 @@ class CubeWidget(QWidget):
         if not self.counting_enabled:
             return
         
-        # Мгновенно пробуждаем таймер до 60 FPS при клике мыши
         if self.timer.interval() != 16:
             self.timer.setInterval(16)
             
@@ -279,19 +340,15 @@ class CubeWidget(QWidget):
     def animate_step(self):
         now = QDateTime.currentDateTime()
         
-        # Сброс CPM/WPM при простое более 10 секунд
         if self.last_type_time.msecsTo(now) > SPEED_RESET_TIMEOUT_MS:
             self.keystroke_times = []
         else:
             self.keystroke_times = [t for t in self.keystroke_times if t.msecsTo(now) <= 60000]
         
-        # Медленное остывание кубика, когда пользователь не печатает
         if self.last_type_time.msecsTo(now) > 2000:
             if self.heat > 0:
                 self.heat = max(0.0, self.heat - 0.04)
                 
-        # ЭФФЕКТ ПРОДОЛЖИТЕЛЬНОЙ ПЕЧАТИ:
-        # Если кубик горячий (heat > 5.0), внутри куба спонтанно рождаются дополнительные искорки
         if self.heat > 5.0:
             if random.random() < (self.heat - 5.0) * 0.03:
                 ex = random.uniform(20, self.width() - 20)
@@ -302,7 +359,6 @@ class CubeWidget(QWidget):
                 p.vy = random.uniform(-1.5, 1.5)
                 self.particles.append(p)
 
-        # Обновление состояния искр
         active_particles = []
         for p in self.particles:
             p.update()
@@ -310,7 +366,6 @@ class CubeWidget(QWidget):
                 active_particles.append(p)
         self.particles = active_particles
 
-        # Обновление состояния ряби
         active_ripples = []
         for r in self.ripples:
             r.update()
@@ -318,7 +373,6 @@ class CubeWidget(QWidget):
                 active_ripples.append(r)
         self.ripples = active_ripples
         
-        # Обновление тряски текста (амплитуда зафиксирована на стандартном значении 3px)
         if self.shake_frames > 0 and self.display_mode == "counter":
             max_offset = 3
             self.shake_offset_x = random.randint(-max_offset, max_offset)
@@ -347,7 +401,6 @@ class CubeWidget(QWidget):
         
         bg_rect = QRect(12, 12, self.width() - 24, self.height() - 24)
         
-        # Выбор цвета рамки с учетом динамического "дыхания" (border_alpha)
         if self.counting_enabled:
             border_color = QColor.fromHsv(int(self.hue), 240, 255, self.border_alpha)
         else:
@@ -355,31 +408,25 @@ class CubeWidget(QWidget):
             
         bg_color = QColor(15, 15, 15, 210) if self.counting_enabled else QColor(20, 20, 20, 150)
         
-        # Отрисовка кубика (толщина рамки 2px)
         pen_width = 2
         painter.setPen(QPen(border_color, pen_width))
         painter.setBrush(QBrush(bg_color))
         painter.drawRoundedRect(bg_rect, 15, 15)
         
-        # --- СОЗДАЕМ МАСКУ ОБРЕЗКИ ПО КРАСИВОЙ ФОРМЕ СКРУГЛЕННЫХ УГЛОВ КУБИКА ---
         clip_path = QPainterPath()
-        clip_path.addRoundedRect(QRectF(bg_rect), 15, 15)  # Маска идеально совпадает со скруглением 15px
+        clip_path.addRoundedRect(QRectF(bg_rect), 15, 15)
         
-        painter.save()                 # Сохраняем состояние контекста
-        painter.setClipPath(clip_path) # Устанавливаем скругленный клиппинг
+        painter.save()
+        painter.setClipPath(clip_path)
         
-        # 1. Отрисовка квадратной ряби (теперь плавно обрезается на краях)
         for r in self.ripples:
             ripple_color = QColor(border_color)
             ripple_color.setAlpha(int(r.alpha))
             painter.setPen(QPen(ripple_color, 2))
             painter.setBrush(Qt.NoBrush)
-            
             r_rect = QRectF(r.cx - r.radius, r.cy - r.radius, r.radius * 2, r.radius * 2)
             painter.drawRoundedRect(r_rect, 10, 10)
             
-        # 2. Отрисовка искр (конфетти) - теперь они тоже аккуратно растворяются у границ кубика,
-        # не вылезая за его рамки и не срезаясь невидимым жестким краем окна!
         for p in self.particles:
             color = QColor(p.color)
             color.setAlpha(int(p.alpha))
@@ -387,10 +434,8 @@ class CubeWidget(QWidget):
             painter.setBrush(QBrush(color))
             painter.drawEllipse(int(p.x - p.radius), int(p.y - p.radius), int(p.radius * 2), int(p.radius * 2))
             
-        painter.restore()              # Восстанавливаем состояние контекста (отключаем маску обрезки)
-        # --------------------------------------------------------------------------------------------------
+        painter.restore()
         
-        # Настройка цвета текста (выровнен идеально по центру во всех режимах)
         text_color = QColor(255, 255, 255) if self.counting_enabled else QColor(150, 150, 150)
         painter.setPen(QPen(text_color))
 
@@ -439,6 +484,7 @@ class CubeWidget(QWidget):
                 
             if not self.locked:
                 self.move(event.globalPos() - self.drag_position)
+                self.save_settings()
                 event.accept()
 
     def mouseReleaseEvent(self, event):
@@ -456,7 +502,6 @@ class CubeWidget(QWidget):
             self.display_mode = "counter"
         self.update()
 
-    # Контекстное меню по правому клику
     def contextMenuEvent(self, event):
         contextMenu = QMenu(self)
         
@@ -481,8 +526,12 @@ class CubeWidget(QWidget):
         reset_action = QAction(self.tr_text("reset"), self)
         reset_action.triggered.connect(self.reset_counter)
         contextMenu.addAction(reset_action)
+
+        hide_tray_action = QAction(self.tr_text("hide_tray"), self)
+        hide_tray_action.triggered.connect(self.hide)
+        contextMenu.addAction(hide_tray_action)
         
-        # Подменю для выбора языка
+        # Подменю языков
         lang_menu = contextMenu.addMenu(self.tr_text("language"))
         
         ru_lang_action = QAction("Русский", self)
@@ -501,7 +550,7 @@ class CubeWidget(QWidget):
         contextMenu.addSeparator()
         
         exit_action = QAction(self.tr_text("exit"), self)
-        exit_action.triggered.connect(QApplication.quit)
+        exit_action.triggered.connect(self.quit_app)
         contextMenu.addAction(exit_action)
         
         contextMenu.exec_(self.mapToGlobal(event.pos()))
@@ -509,22 +558,35 @@ class CubeWidget(QWidget):
     def toggle_masher_mode(self, checked):
         self.button_masher_mode = checked
         self.monitor.button_masher_mode = checked
+        self.save_settings()
 
     def toggle_lock(self):
         self.locked = not self.locked
+        self.save_settings()
 
     def toggle_counting(self):
         self.counting_enabled = not self.counting_enabled
+        self.save_settings()
         self.update()
 
     def reset_counter(self):
         self.count = 0
         self.heat = 0.0
+        self.save_settings()
         self.update()
+
+    def quit_app(self):
+        self.save_settings()
+        QApplication.quit()
+
+    def closeEvent(self, event):
+        self.save_settings()
+        event.accept()
 
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
+    app.setQuitOnLastWindowClosed(False)  # Чтобы программа не закрывалась при сворачивании в трей
     widget = CubeWidget()
     widget.show()
     sys.exit(app.exec_())
