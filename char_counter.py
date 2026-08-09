@@ -1,9 +1,10 @@
 import sys
+import os
 import random
 import math
-from PyQt5.QtCore import Qt, QPoint, QTimer, QRect, QRectF, pyqtSignal, QObject, QDateTime, QSettings
+from PyQt5.QtCore import Qt, QPoint, QTimer, QRect, QRectF, pyqtSignal, QObject, QDateTime, QSettings, QStandardPaths, QUrl
 from PyQt5.QtWidgets import QApplication, QWidget, QMenu, QAction, QSystemTrayIcon
-from PyQt5.QtGui import QFont, QColor, QPainter, QBrush, QPen, QPainterPath, QIcon, QPixmap
+from PyQt5.QtGui import QFont, QColor, QPainter, QBrush, QPen, QPainterPath, QIcon, QPixmap, QDesktopServices
 from pynput import keyboard, mouse
 
 # НАСТРОЙКА: Сброс статистики CPM/WPM в ноль при простое (в миллисекундах)
@@ -20,6 +21,7 @@ TRANSLATIONS = {
         "reset": "Сбросить счетчик",
         "hide_tray": "Скрыть в трей",
         "show_app": "Показать куб",
+        "open_log": "Открыть лог статистики",
         "exit": "Выход",
         "language": "Язык \\ Language",
         "start": "Старт",
@@ -35,6 +37,7 @@ TRANSLATIONS = {
         "reset": "Reset Counter",
         "hide_tray": "Hide to tray",
         "show_app": "Show Cube",
+        "open_log": "Open Stats Log",
         "exit": "Exit",
         "language": "Language \\ Язык",
         "start": "Start",
@@ -164,7 +167,16 @@ class CubeWidget(QWidget):
         super().__init__()
         self.settings = QSettings("CharCounterApp", "CharCounter")
         
+        # Путь к файлу лога в AppData
+        app_data_dir = QStandardPaths.writableLocation(QStandardPaths.AppDataLocation)
+        if not os.path.exists(app_data_dir):
+            os.makedirs(app_data_dir)
+        self.log_file_path = os.path.join(app_data_dir, "stats_log.txt")
+
+        # Счетчик всегда стартует с 0
         self.count = 0
+        self._logged_exit = False
+        
         self.particles = []
         self.ripples = []
         self.shake_frames = 0
@@ -194,8 +206,11 @@ class CubeWidget(QWidget):
         screen = QApplication.primaryScreen().geometry()
         self.move(screen.width() - 130, screen.height() - 170)
         
-        # Загрузка сохраненного состояния
+        # Загрузка сохраненных настроек
         self.load_settings()
+        
+        # Запись старта в лог
+        self.log_session_start()
         
         self.drag_position = QPoint()
         self.click_start_pos = QPoint()
@@ -214,6 +229,64 @@ class CubeWidget(QWidget):
         # Инициализация системного трея
         self.init_tray()
 
+    def get_mode_name(self):
+        modes = {
+            "counter": "Счетчик \\ Counter",
+            "time": "Время \\ Time",
+            "speed": "Скорость \\ Speed"
+        }
+        return modes.get(self.display_mode, self.display_mode)
+
+    def log_session_start(self):
+        now_str = QDateTime.currentDateTime().toString("dd.MM.yyyy hh:mm:ss")
+        masher_str = "Включен \\ Enabled" if self.button_masher_mode else "Выключен \\ Disabled"
+        
+        line = (
+            f"[{now_str}] >>> ЗАПУСК ПРОГРАММЫ \\ PROGRAM LAUNCH\n"
+            f"  • Выбранный режим \\ Selected mode: {self.get_mode_name()}\n"
+            f"  • Учет кликов мыши \\ Mouse click tracking: {masher_str}\n"
+            f"{'-'*60}\n"
+        )
+        try:
+            with open(self.log_file_path, "a", encoding="utf-8") as f:
+                f.write(line)
+        except Exception as e:
+            print(f"Ошибка записи лога старта: {e}")
+
+    def log_session_end(self):
+        if self._logged_exit:
+            return
+        self._logged_exit = True
+        
+        now = QDateTime.currentDateTime()
+        now_str = now.toString("dd.MM.yyyy hh:mm:ss")
+        masher_str = "Включен \\ Enabled" if self.button_masher_mode else "Выключен \\ Disabled"
+        
+        elapsed_sec = self.launch_time.secsTo(now)
+        hours = elapsed_sec // 3600
+        minutes = (elapsed_sec % 3600) // 60
+        seconds = elapsed_sec % 60
+        duration_str = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
+
+        line = (
+            f"[{now_str}] <<< ЗАВЕРШЕНИЕ РАБОТЫ \\ SESSION END\n"
+            f"  • Время работы \\ Uptime: {duration_str}\n"
+            f"  • Всего кликов за сессию \\ Total session clicks: {self.count}\n"
+            f"  • Финальный режим \\ Final mode: {self.get_mode_name()}\n"
+            f"  • Учет кликов мыши \\ Mouse click tracking: {masher_str}\n"
+            f"{'='*60}\n\n"
+        )
+        try:
+            with open(self.log_file_path, "a", encoding="utf-8") as f:
+                f.write(line)
+        except Exception as e:
+            print(f"Ошибка записи лога выхода: {e}")
+
+    def open_stats_log(self):
+        if not os.path.exists(self.log_file_path):
+            open(self.log_file_path, "w", encoding="utf-8").close()
+        QDesktopServices.openUrl(QUrl.fromLocalFile(self.log_file_path))
+
     def init_tray(self):
         self.tray_icon = QSystemTrayIcon(self)
         self.tray_icon.setIcon(self.create_tray_icon())
@@ -222,6 +295,12 @@ class CubeWidget(QWidget):
         self.toggle_action = QAction(self.tr_text("show_app"), self)
         self.toggle_action.triggered.connect(self.toggle_visibility)
         tray_menu.addAction(self.toggle_action)
+
+        open_log_action = QAction(self.tr_text("open_log"), self)
+        open_log_action.triggered.connect(self.open_stats_log)
+        tray_menu.addAction(open_log_action)
+        
+        tray_menu.addSeparator()
         
         exit_action = QAction(self.tr_text("exit"), self)
         exit_action.triggered.connect(self.quit_app)
@@ -232,7 +311,6 @@ class CubeWidget(QWidget):
         self.tray_icon.show()
 
     def create_tray_icon(self):
-        # Динамическое создание векторного значка куба для системного трея
         pixmap = QPixmap(32, 32)
         pixmap.fill(Qt.transparent)
         painter = QPainter(pixmap)
@@ -268,7 +346,9 @@ class CubeWidget(QWidget):
         self.button_masher_mode = self.settings.value("masher_mode", False, type=bool)
         self.locked = self.settings.value("locked", False, type=bool)
         self.counting_enabled = self.settings.value("counting_enabled", True, type=bool)
-        self.count = self.settings.value("count", 0, type=int)
+        
+        # Счетчик всегда сбрасывается в 0 при запуске
+        self.count = 0
         
         pos = self.settings.value("pos")
         if pos and isinstance(pos, QPoint):
@@ -279,7 +359,6 @@ class CubeWidget(QWidget):
         self.settings.setValue("masher_mode", self.button_masher_mode)
         self.settings.setValue("locked", self.locked)
         self.settings.setValue("counting_enabled", self.counting_enabled)
-        self.settings.setValue("count", self.count)
         self.settings.setValue("pos", self.pos())
 
     def tr_text(self, key):
@@ -301,7 +380,6 @@ class CubeWidget(QWidget):
         
         now = QDateTime.currentDateTime()
         self.count += 1
-        self.save_settings()
         
         self.keystroke_times.append(now)
         self.heat = min(self.heat + 0.6, 10.0)
@@ -492,6 +570,10 @@ class CubeWidget(QWidget):
             if not self.drag_occurred:
                 self.toggle_display_mode()
             event.accept()
+        # Сворачивание в трей по нажатию Средней Кнопки Мыши (колесика)
+        elif event.button() == Qt.MiddleButton:
+            self.toggle_visibility()
+            event.accept()
 
     def toggle_display_mode(self):
         if self.display_mode == "counter":
@@ -530,6 +612,10 @@ class CubeWidget(QWidget):
         hide_tray_action = QAction(self.tr_text("hide_tray"), self)
         hide_tray_action.triggered.connect(self.hide)
         contextMenu.addAction(hide_tray_action)
+
+        open_log_action = QAction(self.tr_text("open_log"), self)
+        open_log_action.triggered.connect(self.open_stats_log)
+        contextMenu.addAction(open_log_action)
         
         # Подменю языков
         lang_menu = contextMenu.addMenu(self.tr_text("language"))
@@ -572,21 +658,22 @@ class CubeWidget(QWidget):
     def reset_counter(self):
         self.count = 0
         self.heat = 0.0
-        self.save_settings()
         self.update()
 
     def quit_app(self):
         self.save_settings()
+        self.log_session_end()
         QApplication.quit()
 
     def closeEvent(self, event):
         self.save_settings()
+        self.log_session_end()
         event.accept()
 
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
-    app.setQuitOnLastWindowClosed(False)  # Чтобы программа не закрывалась при сворачивании в трей
+    app.setQuitOnLastWindowClosed(False)
     widget = CubeWidget()
     widget.show()
     sys.exit(app.exec_())
