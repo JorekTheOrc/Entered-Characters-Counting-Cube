@@ -4,11 +4,11 @@
 </p>
 
 <p align="center">
-  A compact interactive desktop widget that tracks keystrokes, calculates typing speed (CPM/WPM), and displays session uptime, all accompanied by procedural visual effects.
+  A compact and interactive desktop widget that tracks keystrokes and mouse clicks, calculates typing speed (CPM/WPM), logs detailed session statistics, and responds with procedural visual effects.
 </p>
 
 <p align="center">
-  <a href="README.ru.md">Читать на русском</a>
+  <a href="README.md">Русский</a> | <strong>English</strong>
 </p>
 
 <p align="center">
@@ -22,31 +22,29 @@
 
 ## ✨ Key Features
 
-* **📊 Three Display Modes:** Switch between metrics with a single left-click on the cube.
-* **🌐 Bilingual Interface:** Support for Russian and English languages with dynamic switching of text labels and menu options.
-* **💾 Preferences Persistence:** Automatically saves your widget position, language, lock status, and mouse options between restarts (counter resets to 0 on launch).
-* **📥 System Tray Integration:** Easily minimize the cube to the system tray via middle-click or context menu to keep it running smoothly in the background.
-* **📝 Bilingual Session Logging:** Generates a clean bilingual (`stats_log.txt`) history file tracking launch timestamps, session duration, and click counts. Easily accessible directly from the context menu.
-* **🔥 Dynamic Heat System:** The faster you type, the quicker the neon border changes its color, and more particles (sparks) are generated inside.
+* **📊 Three Display Modes:** Switch between Counter, Elapsed Time, and Typing Speed with a single left click.
+* **🔥 Dynamic Heat System:** Typing faster dynamically accelerates the neon border color cycle and generates extra glowing spark particles inside the widget.
 * **🎨 Procedural Visual Effects:**
-  * **Shake Effect:** A subtle text jitter triggered when typing.
-  * **Spark Particles:** Particles burst from the center on keystrokes, fading out naturally while being contained inside the widget borders.
-  * **Ripple Effect:** Circular waves radiating inside the cube upon mouse clicks (when enabled).
-* **🔒 Layout Controls:** Lock the widget position, pause counting, or toggle mouse click tracking directly from the context menu.
-* **🔲 Minimalist Design:** Frameless translucent window with a subtle border breathing animation.
+  * **Text Shake:** Subtle shaking feedback on every keystroke.
+  * **Sparks (Particles):** Dynamic particles radiating from the center and dissolving within the rounded border boundaries.
+  * **Ripples:** Expanding wave animations triggered on mouse clicks.
+* **📥 Detailed Session Logging:** Automatically writes session statistics (launch time, exit time, uptime, keystroke count, and mouse click count) to `stats_log.txt` located in the system `AppData` directory.
+* **💾 Automatic Settings Persistence:** Remembers widget position, interface language, and lock status across application restarts via `QSettings`.
+* **🌐 Multilingual UI:** Seamlessly switch between Russian and English via the context menu.
+* **🔔 System Tray Integration:** Minimize the widget to the tray using the middle mouse button (scroll wheel) or via the context menu.
+* **🔲 Minimalist Design:** Frameless translucent window with a smooth "breathing" border effect.
 
 ---
 
-## ⚡ Operating & Display Modes
+## ⚡ Display Modes
 
-You can cycle through the display modes by left-clicking the cube:
+Switch the displayed information by left-clicking the cube:
 
-| Mode | Information Displayed | Features |
+| Mode | Information Displayed | Details |
 | :--- | :--- | :--- |
-| **Counter** | Total number of keystrokes | Accompanied by digit shaking and spark bursts on input. |
-| **Time** | Start time and elapsed session duration | Time format automatically adapts to the chosen language. |
-| **Speed** | Typing speed in CPM and WPM | Calculated in real-time using a 60-second sliding window. |
-
+| **Counter** | Total actions during the session | Accompanied by text shake and spark particle bursts. |
+| **Time** | Start time and total session duration | Display format: `HH:MM:SS`. |
+| **Speed** | Typing speed in CPM and WPM | Calculated in real-time over a sliding 60-second window. |
 <p align="center">
   <img width="233" height="209" alt="Animation4" src="https://github.com/user-attachments/assets/3896894e-10bc-44a0-9bea-95ff54031da5" />
 </p>
@@ -55,48 +53,92 @@ You can cycle through the display modes by left-clicking the cube:
 
 ## ⚙️ Input Filtering
 
-The program records **only individual physical key presses** (holding down keys and OS autorepeat are completely ignored in all modes).
+By default, the application runs in **smart character count mode**:
+* Ignores modifier keys (`Ctrl`, `Alt`, `Win`).
+* Ignores navigation and functional keys (`Enter`, `Backspace`, `Tab`, arrow keys, `Page Up/Down`, etc.).
+* Spaces are counted only when pressed without modifier keys.
 
-By default, the widget operates in **Smart Counting Mode**:
-* System modifier keys (`Ctrl`, `Alt`, `Win`) are ignored.
-* Navigation and command keys (`Enter`, `Backspace`, `Tab`, arrows, `Page Up/Down`, etc.) are ignored.
-* The Spacebar is counted only when pressed without modifiers.
-
-Optional **Mouse Click Tracking** (can be enabled via the context menu):
-* Counts mouse clicks in addition to keystrokes and triggers a circular ripple effect inside the cube.
+When **"Count mouse clicks"** is enabled:
+* Mouse clicks are tracked alongside keystrokes and trigger circular ripple effects.
+* Keystrokes and mouse clicks are tracked separately in the session log.
 
 ---
 
-## ⌨️ Widget Controls
+## ⌨️ Controls
 
 | Action | Result |
 | :--- | :--- |
-| **Left Click (LMB)** | Switch display mode (Counter ➡️ Time ➡️ Speed) |
-| **Hold LMB & Drag** | Drag the cube across the screen (if unlocked) |
-| **Middle Click (MMB / Wheel)** | Minimize / Hide the widget to system tray |
-| **Right Click (RMB)** | Open settings context menu |
-| **Tray Icon Click** | Toggle widget visibility (Show / Hide) |
+| **Left Click** | Toggle display mode (Counter ➡️ Time ➡️ Speed) |
+| **Left Click + Drag** | Move the cube across the screen (when unlocked) |
+| **Middle Click (Wheel)** | Minimize to tray / Restore from tray |
+| **Right Click** | Open settings context menu |
 
-### Settings Menu (RMB):
-* **Count mouse clicks** — toggles tracking for mouse button clicks.
-* **Lock / Unlock** — prevents accidental dragging of the widget.
-* **Pause / Resume Counting** — temporarily pauses activity tracking.
-* **Reset Counter** — resets keystroke statistics and heat level.
-* **Hide to tray** — minimizes the widget to the system tray.
-* **Open Stats Log** — opens `stats_log.txt` in your default text editor.
-* **Language \ Язык** — toggles the interface language (Русский / English).
-* **Exit** — closes the application and logs the session metrics.
-
+### Context Menu (Right Click):
+* **Count mouse clicks** — Toggle mouse click tracking.
+* **Lock / Unlock** — Prevent accidental dragging.
+* **Pause / Resume Counting** — Temporarily pause input tracking.
+* **Reset Counter** — Reset current counts and heat meter to zero.
+* **Hide to tray** — Minimize widget to system notification area.
+* **Open Stats Log** — Open `stats_log.txt` in your default text editor.
+* **Language \ Язык** — Switch interface language (Русский / English).
+* **Exit** — Save session logs and exit the application.
 <p align="center">
   <img width="604" height="398" alt="Animation2" src="https://github.com/user-attachments/assets/0eb6f3c4-4002-4226-ba04-f51452f11b1c" />
 </p>
 
 ---
 
-## 📥 Requirements & Installation
+## 🚀 Running the Application
 
-### Requirements
-This script requires Python 3.8 or higher. Dependencies can be installed using:
+### Option 1. Standalone Executable (Windows)
+1. Download `KeyboardCube.exe` from the [Releases](https://github.com/JorekTheOrc/Entered-Characters-Counting-Cube/releases) page (or grab it from the repository root).
+2. Run the `.exe` by double-clicking.
 
+---
+
+### Option 2. Running from Source (Cross-platform)
+
+#### 1. Prerequisites
+Ensure **Python 3.8+** is installed on your system.
+
+#### 2. Clone the Repository
 ```bash
-pip install PyQt5 pynput
+git clone https://github.com/JorekTheOrc/Entered-Characters-Counting-Cube.git
+cd Entered-Characters-Counting-Cube
+```
+
+#### 3. Install Dependencies
+```bash
+py -m pip install PyQt5 pynput
+```
+*(or `python -m pip install PyQt5 pynput`)*
+
+#### 4. Run the Script
+```bash
+py char_counter.py
+```
+*(or `python char_counter.py`)*
+
+---
+
+## 🛠️ Building an Executable with PyInstaller
+
+To bundle the project into a single standalone `.exe` file:
+
+1. Install PyInstaller:
+   ```cmd
+   py -m pip install pyinstaller
+   ```
+2. Build using the provided `.spec` file:
+   ```cmd
+   py -m PyInstaller KeyboardCube.spec
+   ```
+   *(or directly: `py -m PyInstaller --noconsole --onefile --name "KeyboardCube" char_counter.py`)*
+
+The generated binary will be located in **`dist/KeyboardCube.exe`**.
+
+---
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE).
